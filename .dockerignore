@@ -1,4 +1,4 @@
-helm/*
+helm/
 handlers/*_test.go
-.vscode
-.git
+.vscode/
+.git/
