@@ -1,5 +1,0 @@
-{
-    "yaml.schemas": {
-        "kubernetes://schema/admissionregistration.k8s.io/v1%40mutatingwebhookconfiguration": "file:///home/rmishra/source/alloydb-mutating-wh/helm/hydrated.yaml"
-    }
-}
