@@ -20,9 +20,10 @@ deploymentName: "alloydb-pod-mutator"
 
 # Container image specific values go here.
 image:
-  repository: gcr.io/rmishra-kubernetes-playground/pod-mutator-wh
-  pullPolicy: IfNotPresent
-  tag: "v0.20"
+  repository: rmishragcp01/pod-mutator-wh
+  #repository: gcr.io/rmishra-kubernetes-playground/pod-mutator-wh
+  pullPolicy: Always
+  tag: "v0.26"
 
 imagePullSecrets: []
 nameOverride: ""
