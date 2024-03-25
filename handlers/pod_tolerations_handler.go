@@ -16,7 +16,7 @@ import (
 	"k8s.io/api/admission/v1beta1"
 )
 
-type AdmitFunc func(*v1beta1.AdmissionReview) *v1beta1.AdmissionResponse
+type AdmitFunc func(*v1beta1.AdmissionReview, []corev1.Toleration) *v1beta1.AdmissionResponse
 
 var tolerations []corev1.Toleration
 
@@ -34,17 +34,17 @@ func BuildTolerations() {
 	filePath := filepath.Join(path, fileName)
 	configFile, err := os.Open(filePath)
 	if err != nil {
-		log.Fatalf(fmt.Sprintf("handlers.buildTolerations():Error opening tolerations config file %s", os.Getenv("TOLERATION_CONFIG_PATH")), err)
+		log.Fatalf(fmt.Sprintf("handlers.BuildTolerations():Error opening tolerations config file %s", os.Getenv("TOLERATION_CONFIG_PATH")), err)
 	}
 	defer configFile.Close()
 	data, err := io.ReadAll(configFile)
 	if err != nil {
-		log.Fatalf("handlers.buildTolerations():Error reading the toleration data from the file:: %v", err)
+		log.Fatalf("handlers.BuildTolerations():Error reading the toleration data from the file:: %v", err)
 	}
 	if err = json.Unmarshal(data, &tolerations); err != nil {
-		log.Fatalf("handlers.buildTolerations():Error unmarshalling the toleration data from the file:: %v", err)
+		log.Fatalf("handlers.BuildTolerations():Error unmarshalling the toleration data from the file:: %v", err)
 	}
-	log.Info("handlers.init():Initialized the tolerations to be configured for the pod")
+	log.Info("handlers.BuildTolerations():Initialized the tolerations to be configured for the pod")
 
 }
 
@@ -71,6 +71,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit AdmitFunc) {
 		http.Error(w, "Empty request received from the client", http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		log.Errorf("handlers.serve():Error occurred, content-type must be set to application/json but received %s", contentType)
@@ -86,7 +87,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit AdmitFunc) {
 	}
 	log.Infof("handlers.serve():Received a valid AdmissionReview for mutating the pod UID = %s", addmissionReview.Request.UID)
 
-	admissionResponse := admit(&addmissionReview)
+	admissionResponse := admit(&addmissionReview, tolerations)
 	addmissionReview.Response = admissionResponse
 	resp, err := json.Marshal(addmissionReview)
 	if err != nil {
@@ -102,7 +103,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit AdmitFunc) {
 	}
 }
 
-func mutatePod(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+func mutatePod(ar *v1beta1.AdmissionReview, tols []corev1.Toleration) *v1beta1.AdmissionResponse {
 
 	log.Info("handlers.mutatePod():Starting to add AlloyDB Omninodepool specific tolerations to the pod")
 	raw := ar.Request.Object.Raw
@@ -126,8 +127,19 @@ func mutatePod(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 			},
 		}
 	}
+
+	if len(tols) == 0 {
+		return &v1beta1.AdmissionResponse{
+			UID:     ar.Request.UID,
+			Allowed: true,
+			Result: &metav1.Status{
+				Status: "Success",
+			},
+		}
+
+	}
 	existing := pod.Spec.Tolerations
-	combined := append(existing, tolerations...)
+	combined := append(existing, tols...)
 	patch, err := constructPatch(combined)
 	if err != nil {
 		log.Errorf("handlers.mutatePod():Could not create a patch for adding tolerations to the pod:: %v", err)

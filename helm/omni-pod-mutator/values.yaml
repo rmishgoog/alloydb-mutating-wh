@@ -12,7 +12,7 @@ replicaCount: 2
 # certManager:
 #   issuer: "alloydb-omni-wh-self-signed"
 
-deploymentName: "alloydb-pod-mutator"
+deploymentName: "alloydb-tolerations-mutator"
 
 # Mutating webhook configurations.
 # webhookConfigs:
@@ -20,10 +20,10 @@ deploymentName: "alloydb-pod-mutator"
 
 # Container image specific values go here.
 image:
-  repository: rmishragcp01/pod-mutator-wh
+  repository: rmishragcp01/pod-tolerations-mutator-wh
   #repository: gcr.io/rmishra-kubernetes-playground/pod-mutator-wh
-  pullPolicy: Always
-  tag: "v0.26"
+  pullPolicy: IfNotPresent
+  tag: "v1.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -55,10 +55,10 @@ omniTolerations:
 volumes:
 - name: tolerations
   configMap:
-    name: alloydb-pod-mutator-cm
+    name: alloydb-tolerations-mutator-cm
 - name: certificates
   secret:
-    secretName: alloydb-pod-mutator-tls-cert
+    secretName: alloydb-tolerations-mutator-tls-cert
 
 # The name here must be same as the volumes[0].name.
 # The mountPath should match tolerationConfigFilePath.
@@ -149,8 +149,8 @@ ingress:
 
 # Values to be delegated to the subchart which contains the MutatingWebhookConfiguration.
 webhook-config:
-  deploymentName: "alloydb-pod-mutator"
-  webhookConfigName: "webhook.alloydb.google.com"
+  deploymentName: "alloydb-tolerations-mutator"
+  webhookConfigName: "webhook.alloydb.toleration.mutator.google.com"
   omniNamespaceLabel: "kubernetes.io/metadata.name"
   omniNamespaceLabelValue: "alloydb-pwrx"
   servicePort: 8443

@@ -177,12 +177,16 @@ func TestServe(t *testing.T) {
 
 func TestMutatePod(t *testing.T) {
 	tests := []struct {
+		id   int
 		name string
+		tols []corev1.Toleration
 		ar   *v1beta1.AdmissionReview
 		want *v1beta1.AdmissionResponse
 	}{
 		{
 			name: "Valid Pod No Tolerations",
+			id:   0,
+			tols: tolerations,
 			ar: &v1beta1.AdmissionReview{
 				Request: &v1beta1.AdmissionRequest{
 					UID: types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
@@ -203,6 +207,8 @@ func TestMutatePod(t *testing.T) {
 		},
 		{
 			name: "Pod With Existing Tolerations",
+			id:   1,
+			tols: tolerations,
 			ar: &v1beta1.AdmissionReview{
 				Request: &v1beta1.AdmissionRequest{
 					UID: types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
@@ -223,6 +229,8 @@ func TestMutatePod(t *testing.T) {
 		},
 		{
 			name: "Invalid Kind",
+			id:   2,
+			tols: tolerations,
 			ar: &v1beta1.AdmissionReview{
 				Request: &v1beta1.AdmissionRequest{
 					UID: types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
@@ -239,14 +247,34 @@ func TestMutatePod(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "No Defined Tolerations",
+			id:   3,
+			tols: make([]corev1.Toleration, 0),
+			ar: &v1beta1.AdmissionReview{
+				Request: &v1beta1.AdmissionRequest{
+					UID: types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
+					Object: runtime.RawExtension{
+						Raw: []byte(`{"apiVersion": "v1", "kind": "Pod", "metadata": {"name": "fake-pod", "namespace": "fake-ns"}, "spec": {"containers": [{"name": "fake-container"}]}}`),
+					},
+				},
+			},
+			want: &v1beta1.AdmissionResponse{
+				UID:     types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
+				Allowed: true,
+				Result: &metav1.Status{
+					Status: "Success",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := mutatePod(tt.ar)
+			got := mutatePod(tt.ar, tt.tols)
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got response %+v, want %+v", got, tt.want)
+				t.Errorf("\t%s\tgot response %+v, want %+v", failed, got, tt.want)
 			}
 		})
 	}
@@ -275,10 +303,10 @@ func TestConstructPatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := constructPatch(tt.tolerations)
 			if err != nil {
-				t.Errorf("constructPatch() error = %v", err)
+				t.Errorf("\t%s\tconstructPatch() error = %v", failed, err)
 			}
 			if string(got) != string(tt.want) {
-				t.Errorf("constructPatch() = %v, want %v", string(got), string(tt.want))
+				t.Errorf("\t%s\tconstructPatch() = %v, want %v", failed, string(got), string(tt.want))
 			}
 		})
 	}
