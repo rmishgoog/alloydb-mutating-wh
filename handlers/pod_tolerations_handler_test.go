@@ -213,14 +213,14 @@ func TestMutatePod(t *testing.T) {
 				Request: &v1beta1.AdmissionRequest{
 					UID: types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
 					Object: runtime.RawExtension{
-						Raw: []byte(`{"apiVersion": "v1", "kind": "Pod", "metadata": {"name": "test-pod"}, "spec": {"tolerations": [{"key": "key1", "operator": "Equal", "value": "value1"}], "containers": [{"name": "test-container"}]}}`),
+						Raw: []byte(`{"apiVersion": "v1", "kind": "Pod", "metadata": {"name": "test-pod"}, "spec": {"tolerations": [{"key": "key1", "operator": "Equal", "value": "value1", "effect": "NoSchedule"}], "containers": [{"name": "test-container"}]}}`),
 					},
 				},
 			},
 			want: &v1beta1.AdmissionResponse{
 				UID:     types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
 				Allowed: true,
-				Patch:   []byte(`[{"op":"replace","path":"/spec/tolerations","value":[{"key":"key1","operator":"Equal","value":"value1"},{"key":"cloud.google.com/alloydb-host","operator":"Exists","effect":"NoSchedule"}]}]`),
+				Patch:   []byte(`[{"op":"replace","path":"/spec/tolerations","value":[{"key":"cloud.google.com/alloydb-host","operator":"Exists","effect":"NoSchedule"},{"key":"key1","operator":"Equal","value":"value1","effect":"NoSchedule"}]}]`),
 				PatchType: func() *v1beta1.PatchType {
 					pt := v1beta1.PatchTypeJSONPatch
 					return &pt
@@ -265,6 +265,50 @@ func TestMutatePod(t *testing.T) {
 				Result: &metav1.Status{
 					Status: "Success",
 				},
+			},
+		},
+		{
+			name: "Existing Same Toleration",
+			id:   4,
+			tols: tolerations,
+			ar: &v1beta1.AdmissionReview{
+				Request: &v1beta1.AdmissionRequest{
+					UID: types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
+					Object: runtime.RawExtension{
+						Raw: []byte(`{"apiVersion": "v1", "kind": "Pod", "metadata": {"name": "fake-pod", "namespace": "fake-ns"}, "spec": {"tolerations": [{"key": "cloud.google.com/alloydb-host", "operator": "Exists", "effect": "NoSchedule"}], "containers": [{"name": "fake-container"}]}}`),
+					},
+				},
+			},
+			want: &v1beta1.AdmissionResponse{
+				UID:     types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
+				Allowed: true,
+				Patch:   []byte(`[{"op":"replace","path":"/spec/tolerations","value":[{"key":"cloud.google.com/alloydb-host","operator":"Exists","effect":"NoSchedule"}]}]`),
+				PatchType: func() *v1beta1.PatchType {
+					pt := v1beta1.PatchTypeJSONPatch
+					return &pt
+				}(),
+			},
+		},
+		{
+			name: "Existing One Same And One Unique Toleration",
+			id:   5,
+			tols: tolerations,
+			ar: &v1beta1.AdmissionReview{
+				Request: &v1beta1.AdmissionRequest{
+					UID: types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
+					Object: runtime.RawExtension{
+						Raw: []byte(`{"apiVersion": "v1", "kind": "Pod", "metadata": {"name": "fake-pod", "namespace": "fake-ns"}, "spec": {"tolerations": [{"key": "cloud.google.com/alloydb-host", "operator": "Exists", "effect": "NoSchedule"}, {"key": "key1", "operator": "Exists", "effect": "NoSchedule"}], "containers": [{"name": "fake-container"}]}}`),
+					},
+				},
+			},
+			want: &v1beta1.AdmissionResponse{
+				UID:     types.UID("70a7fc1a-a84b-4e9d-9e6e-500f45a4697b"),
+				Allowed: true,
+				Patch:   []byte(`[{"op":"replace","path":"/spec/tolerations","value":[{"key":"cloud.google.com/alloydb-host","operator":"Exists","effect":"NoSchedule"},{"key":"key1","operator":"Exists","effect":"NoSchedule"}]}]`),
+				PatchType: func() *v1beta1.PatchType {
+					pt := v1beta1.PatchTypeJSONPatch
+					return &pt
+				}(),
 			},
 		},
 	}

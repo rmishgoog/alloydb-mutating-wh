@@ -138,8 +138,18 @@ func mutatePod(ar *v1beta1.AdmissionReview, tols []corev1.Toleration) *v1beta1.A
 		}
 
 	}
-	existing := pod.Spec.Tolerations
-	combined := append(existing, tols...)
+	existing := pod.Spec.Tolerations  // Existing tolerations
+	combined := []corev1.Toleration{} // Existing & newly added combined
+	if len(existing) == 0 {           // When no existing tolerations, combined = newly added only
+		combined = tols
+	} else {
+		for _, t := range tols {
+			if !exists(t, existing) {
+				combined = append(combined, t)
+			}
+		}
+		combined = append(combined, existing...)
+	}
 	patch, err := constructPatch(combined)
 	if err != nil {
 		log.Errorf("handlers.mutatePod():Could not create a patch for adding tolerations to the pod:: %v", err)
@@ -161,6 +171,17 @@ func mutatePod(ar *v1beta1.AdmissionReview, tols []corev1.Toleration) *v1beta1.A
 			return &pt
 		}(),
 	}
+}
+
+func exists(add corev1.Toleration, existing []corev1.Toleration) bool {
+
+	for _, e := range existing {
+		if add.Key == e.Key { // Only check for the key & and if there's a match, just don't overwrite it, regardless of the operator or effect
+			return true
+		}
+	}
+	return false
+
 }
 
 func constructPatch(combined []corev1.Toleration) ([]byte, error) {
