@@ -20,8 +20,8 @@ deploymentName: "alloydb-tolerations-mutator"
 
 # Container image specific values go here.
 image:
-  repository: rmishragcp01/pod-tolerations-mutator-wh
-  #repository: gcr.io/rmishra-kubernetes-playground/pod-tolerations-mutator-wh
+  #repository: rmishragcp01/pod-tolerations-mutator-wh
+  repository: gcr.io/rmishra-kubernetes-playground/pod-tolerations-mutator-wh
   pullPolicy: IfNotPresent
   tag: "v1.1"
 
